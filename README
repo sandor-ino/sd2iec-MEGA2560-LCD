@@ -1,3 +1,110 @@
+This is an adaptation to the recent version of the firmware for SD2IEC on Arduino Mega1280/2560
+Original project link --- https://github.com/larswad/sd2iec_mega2560
+
+NOTE:
+flash firmware ready to arduinomega2560  sd2iec.hex
+SD2IEC.HEX file is ready to be sent directly to Arduino Mega2560 with the Xloader (attached) software is very easy:
+open xloader software
+select file sd2iec.hex , 
+select drive - Mega(ATMEGA2560)
+select PORT COM Arduino
+Upload firmware
+Done
+
+Now create a SD card with your favorite programs. There are many guides by the way, 
+the FB64 program is comfortable. 
+It only works with 512 MB FAT format SD, I tried with SD 1GB and microSD 8GB with adapter and did not work. 
+It is better to connect an SD reader Arduino module to have greater compatibility. Connect module without resistor.
+
+Pin 7 (PH4) and Pin 4 (PG5) for LEDs, in SRC/AVR/Arch-Config.h can be changed (line 1287)
+
+To build it is needed Linux environment!
+
+install in linux or WSL WINDOWS
+- AVR-GCC Compiler
+$sudo apt-get install gcc build-essential
+$sudo apt-get install gcc-avr binutils-avr avr-libc gdb-avr
+- AVRDUDE
+$sudo apt-get install libusb-dev
+$sudo apt-get install avrdude
+
+commands to build code:
+
+$ git clone https://github.com/sandor-ino/sd2iec-MEGA2560.git
+$ cd sd2iec-MEGA2560/
+$ chmod +x ./scripts/configparser.pl
+$ chmod +x ./scripts/gcctest.pl
+$ make CONFIG=configs/config-arduino_mega2560
+
+As a result of building code, you will get the file ./obj-m2560-arduino_mega2560/sd2iec.hex. You need to burn it on Arduino.
+
+in windows:
+use Xloader software for flash sd2iec.hex.
+
+in linux:
+After compiling code, you will find the flash_arduino.sh script in the directory: ./sd2iec_mega2560. 
+Make sure your Arduino is connected as /dev/ttyACM0. Set permissions on USB ports.
+
+$ chmod +x ./scripts/flash_arduino.sh 
+$ ./scripts/flash_arduino.sh 
+ 
+avrdude: AVR device initialized and ready to accept instructions
+ 
+Reading | ################################################## | 100% 0.01s
+ 
+avrdude: Device signature = 0x1e9801 (probably m2560)
+avrdude: reading input file "obj-m2560-arduino_mega2560/sd2iec.hex"
+avrdude: writing flash (60984 bytes):
+ 
+Writing | ################################################## | 100% 9.79s
+ 
+avrdude: 60984 bytes of flash written
+avrdude: verifying flash memory against obj-m2560-arduino_mega2560/sd2iec.hex:
+avrdude: load data flash data from input file obj-m2560-arduino_mega2560/sd2iec.hex:
+avrdude: input file obj-m2560-arduino_mega2560/sd2iec.hex contains 60984 bytes
+avrdude: reading on-chip flash data:
+ 
+Reading | ################################################## | 100% 7.81s
+ 
+avrdude: verifying ...
+avrdude: 60984 bytes of flash verified
+ 
+avrdude: safemode: Fuses OK (E:FD, H:D8, L:FF)
+avrdude done.  Thank you.
+
+More info here:
+https://majsterkowo.pl/sd2iec-commodore64-wgrywanie-programow-z-karty-sd/
+------------------------------------------------------------------------------------------------------------------
+MEGA2560 / Arduino considerations
+---------------------------------
+A separate configuration has been added for the mega2560, this enables the Arduino community to easily
+use sd2iec with a regular Arduino or clone together with an sd-card shield.
+To avoid flashing the arduino bootloader (which is not really needed or recommended since the stock one
+works just fine) and make things a little easier a separate flash_arduino.sh script has been added
+in the scripts folder. This script assumes by default to use the avrdude tool in the avr toolchain, but the
+path's can be easily changed to point out the toolchain root in the Arduino SDK.
+The script expects the board to show up on /dev/ttyACM0. It is possible that root access is required.
+
+The default assumption of the MEGA2560 is that no LEDs or extra push-buttons has been added to the board.
+This however can be easily added by simply changing the commented-out suggested GPIO's in the archconfig.h
+for this purpose. That way, drive activity and error LED's can be functional, same goes for a floppy switching
+button for M2I or D64 disks.
+
+For the SD-card shield it should be connected to the Arduino ICSP header (located at the middle of the board).
+The shield also expects GND, probably 3V and also 5V to be connected.
+
+Some boards also expects the chip select pin (SS) to be connected. There is one special case added for that
+in the config2560 already, but there are probably other shield out there that expects a different pin for that.
+
+* The IEC wires can be changed, but the default ones for mega2560 are recommended to use:
+SRQ goes to PD0 (marked 21)
+CLOCK goes to PD1 (marked 20)
+DATA goes to PD2 (marked 19)
+ATN goes to PD3 (marked 18).
+GND goes to any GND (you can find multiple grounds on the board, there's one located next to pin #53).
+The RESET pin can be skipped, sd2iec doesn't need this for full operation.
+
+---------------------------------------------------------------------------------------------------------------
 sd2iec - a controller/interface adapting storage devices to the CBM serial bus
 Copyright (C) 2007-2022  Ingo Korb <ingo@akana.de>
 Parts based on code from others, see comments in main.c for details.
