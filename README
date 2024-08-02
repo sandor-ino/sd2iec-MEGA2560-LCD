@@ -21,12 +21,18 @@ Pin 7 (PH4) and Pin 4 (PG5) for LEDs, in SRC/AVR/Arch-Config.h can be changed (l
 To build it is needed Linux environment!
 
 install in linux or WSL WINDOWS
-- AVR-GCC Compiler
+1 - update all
+$sudo apt-get update
+2 - AVR-GCC Compiler
 $sudo apt-get install gcc build-essential
 $sudo apt-get install gcc-avr binutils-avr avr-libc gdb-avr
-- AVRDUDE
+3 - AVRDUDE
 $sudo apt-get install libusb-dev
 $sudo apt-get install avrdude
+4 - If required
+$sudo apt install git
+$sudo apt install make
+
 
 commands to build code:
 
