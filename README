@@ -39,8 +39,8 @@ $sudo apt install make
 
 commands to build code:
 
-$ git clone https://github.com/sandor-ino/sd2iec-MEGA2560.git
-$ cd sd2iec-MEGA2560/
+$ git clone https://github.com/sandor-ino/sd2iec-MEGA2560-LCD.git
+$ cd sd2iec-MEGA2560-LCD/
 $ chmod +x ./scripts/configparser.pl
 $ chmod +x ./scripts/gcctest.pl
 $ make CONFIG=configs/config-arduino_mega2560
