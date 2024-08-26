@@ -15,9 +15,11 @@ Upload firmware
 Done
 
 Now create a SD card with your favorite programs. There are many guides by the way, 
-the FB64 program is comfortable. 
+the FB64 program is comfortable.
+
+NOTE:
 It only works with 512 MB FAT format SD, I tried with SD 1GB and microSD 8GB with adapter and did not work. 
-It is better use 1.8 ohm and 3.3 ohm resistor or connect an SD reader Arduino module to have greater compatibility. Connect module without resistor.
+It is better use 1.8K and 3.3K resistor or connect an SD reader Arduino module to have greater compatibility. Connect module without resistor.
 
 Pin 7 (PH4) and Pin 4 (PG5) for LEDs, in SRC/AVR/Arch-Config.h can be changed (line 1287)
 
