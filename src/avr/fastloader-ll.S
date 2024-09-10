@@ -51,19 +51,14 @@
         ;; ATN(+CLK) Interrupt service routine for IEC bus
         ;; ===================================================================
         ;
-        ; Functions called from here may change these registers:
-        ; r0, r18, r19, r24
+        ; Functions called from here may change the r18 register
         ; Other registers must be saved and restored by the called functions
         ;
         .global IEC_ATN_INT_VECT
 IEC_ATN_INT_VECT:
-        ; functions called from here must only change these registers:
         push    r18
         in      r18, _SFR_IO_ADDR(SREG)
         push    r18
-        push    r19
-        push    r24
-        push    r0
 
 #ifdef IEC_PCMSK
         lds     r18, _SFR_ADDR(IEC_PCMSK)
@@ -75,17 +70,16 @@ IEC_ATN_INT_VECT:
         sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_ATN
         rjmp    iiv_atn_irq_end
 
-        ; ATN is low, continue depending from active fast loader
+        ; ATN is low, set DATA to ACK
+        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+
+        ; continue depending from active fast loader
         lds     r18, detected_loader
         cpi     r18, FLCODE_DREAMLOAD_OLD
-        brne    iiv_not_fl_dreamload_old
+        brne    iiv_atn_irq_end         ; not dreamload_old
+
         ; dreamload (old), receive a command code
         rcall   dreamload_get_command_old
-        rjmp    iiv_atn_irq_end         ; no other ATN action needed
-
-iiv_not_fl_dreamload_old:
-        ; no custom behaviour, this is ATN ACK
-        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA    ; DATA low
 
 iiv_atn_irq_end:
 #ifdef IEC_PCMSK
@@ -103,16 +97,12 @@ iiv_atn_irq_end:
         brne    iiv_not_fl_dreamload
         ; dreamload, receive a command code
         rcall   dreamload_get_command
-        rjmp    iiv_clock_irq_end       ; no other CLOCK action needed
 
 iiv_not_fl_dreamload:
 #endif // ifdef IEC_PCMSK
 
 iiv_clock_irq_end:
 
-        pop     r0
-        pop     r24
-        pop     r19
         pop     r18
         out     _SFR_IO_ADDR(SREG), r18
         pop     r18
@@ -125,40 +115,31 @@ iiv_clock_irq_end:
         ;; CLK Interrupt service routine for IEC bus
         ;; ===================================================================
         ;
-        ; Functions called from here may change these registers:
-        ; r0, r18, r19, r24
+        ; Functions called from here may change the r18 register
         ; Other registers must be saved and restored by the called functions
         ;
         .global IEC_CLK_INT_VECT
 IEC_CLK_INT_VECT:
-        ; functions called from here must only change these registers:
+        ; bail early if CLOCK isn't low
+        sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_CLOCK
+        reti
+
         push    r18
         in      r18, _SFR_IO_ADDR(SREG)
         push    r18
-        push    r19
-        push    r24
-        push    r0
 
-        ; check if CLOCK is low
-        sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_CLOCK
-        rjmp    clk_irq_end
-
-        ; CLOCK is low, continue depending from active fast loader
+        ; continue depending from active fast loader
 #ifdef CONFIG_LOADER_DREAMLOAD
         lds     r18, detected_loader
         cpi     r18, FLCODE_DREAMLOAD
         brne    clk_not_fl_dreamload
         ; dreamload, receive a command code
         rcall   dreamload_get_command
-        rjmp    clk_irq_end       ; no other CLOCK action needed
 clk_not_fl_dreamload:
 #endif // ifdef CONFIG_LOADER_DREAMLOAD
 
 clk_irq_end:
 
-        pop     r0
-        pop     r24
-        pop     r19
         pop     r18
         out     _SFR_IO_ADDR(SREG), r18
         pop     r18
@@ -600,7 +581,7 @@ tdbitloop2:
         ret
 #endif
 
-#if defined(CONFIG_LOADER_DREAMLOAD) || defined(CONFIG_LOADER_FC3) || defined(CONFIG_LOADER_ULOAD3) || defined(CONFIG_LOADER_ELOAD1) || defined(CONFIG_LOADER_GEOS) || defined(CONFIG_LOADER_HYDPRALOAD)
+#if defined(CONFIG_LOADER_DREAMLOAD) || defined(CONFIG_LOADER_FC3) || defined(CONFIG_LOADER_ULOAD3) || defined(CONFIG_LOADER_ELOAD1) || defined(CONFIG_LOADER_GEOS) || defined(CONFIG_LOADER_HYDPRALOAD) || defined(CONFIG_LOADER_KRILL)
         ;;
         ;; Set bit 0 of r0 on CLOCK and bit 1 on DATA
         ;; A bit value of one means pull down
@@ -882,10 +863,16 @@ fc3_oldfreeze_ntsc_send:
         ;; Receive a command (track/sector) using the DreamLoad protocol
         ;;
 dreamload_get_command:
+        push    r19
+        push    r24
+
         rcall   dreamload_get_byte
         sts     fl_track, r24
         rcall   dreamload_get_byte
         sts     fl_sector, r24
+
+        pop     r24
+        pop     r19
         ret
 
         ;;
@@ -930,10 +917,19 @@ dl_bitloop:
         ;; Receive a command (track/sector) using the old DreamLoad protocol
         ;;
 dreamload_get_command_old:
+        ; release DATA (which we set for ATN ACK)
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+
+        push    r19
+        push    r24
+
         rcall   dreamload_get_byte_old
         sts     fl_track, r24
         rcall   dreamload_get_byte_old
         sts     fl_sector, r24
+
+        pop     r24
+        pop     r19
         ret
 
         ;;
@@ -1918,24 +1914,48 @@ ultraboot_send_byte:
 
 #ifdef CONFIG_LOADER_HYPRALOAD
         ;;
-        ;; send a byte using the Hypra-Load protocol
-        ;; called with byte in r24, no return value
-        .global hypraload_send_byte
-hypraload_send_byte:
+        ;; send a byte using the Hypra-Load protocol (either unsing
+        ;; the original or the 2.1 protocol, depending on entry point)
+        ;;
+        ;; called with byte in r24, always returns zero
+        ;;
+        ;; r18, r19 scratch (r19 also used by send_bits_to_clk_data)
+        ;; r20      bitmask for request line
+        ;; r21      bitmask for "busy"
+        .global hypraload10_send_byte
+hypraload10_send_byte:
+        ldi     r20, IEC_BIT_ATN
+        ldi     r21, ~IEC_OBIT_DATA
+        rjmp    hl_send_byte_common
 
+        .global hypraload21_send_byte
+hypraload21_send_byte:
+        ldi     r20, IEC_BIT_DATA
+        ldi     r21, ~IEC_OBIT_CLOCK
+
+hl_send_byte_common:
         cli
 
         mov     r0, r24
 
-        rcall   wait_atn_low
+        ;; wait for request line low (1.0: ATN / 2.1: DATA)
+1:      in      r18, _SFR_IO_ADDR(IEC_INPUT)
+        and     r18, r20
+        brne    1b
 
-        ;; release DATA
-        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        ;; release "busy" line (1.0: DATA / 2.1: CLK)
+        in      r19, _SFR_IO_ADDR(IEC_OUTPUT)
+        and     r19, r21
+        out     _SFR_IO_ADDR(IEC_OUTPUT), r19
+        com     r21     ; prepare bitmask for *setting* "busy" again, later
 
-        rcall   wait_atn_high           ; 6 or 7 after ATN high
+        ;; wait for request line high
+1:      in      r18, _SFR_IO_ADDR(IEC_INPUT)
+        and     r18, r20
+        breq    1b                      ; 3 after request line high
 
         ;; delay
-        delay_us 30, -16-RET_OFFSET-RCALL_OFFSET
+        delay_us 30, -13-RCALL_OFFSET
 
         ;; send bits 0+1
         rcall   send_bits_to_clk_data   ; 10+6 or 11+7
@@ -1959,12 +1979,17 @@ hypraload_send_byte:
         rcall   send_bits_to_clk_data   ; 10+6 or 11+7
 
         ;; delay
-        delay_us 25, -6-RET_OFFSET
+        delay_us 25, -8-RET_OFFSET
 
-        ;; set DATA
-        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        ;; busy
+        in      r19, _SFR_IO_ADDR(IEC_OUTPUT)
+        andi    r19, ~IEC_BIT_DATA      ; mask out DATA in case it's 2.1
+        or      r19, r21
+        out     _SFR_IO_ADDR(IEC_OUTPUT), r19
 
         sei
+        clr     r24
+
         ret
 
 #endif

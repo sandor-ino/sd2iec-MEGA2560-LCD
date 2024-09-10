@@ -78,6 +78,9 @@ enum {
   RXTX_FC3OF_PAL,
   RXTX_FC3OF_NTSC,
 
+  RXTX_HYPRALOAD_10,
+  RXTX_HYPRALOAD_21,
+
   RXTX_KRILL_58PRE,
   RXTX_KRILL_DATA,
   RXTX_KRILL_CLOCK,
@@ -114,6 +117,10 @@ static const PROGMEM struct fastloader_rxtx_s fl_rxtx_table[] = {
 #ifdef CONFIG_LOADER_FC3
   [RXTX_FC3OF_PAL]     = { NULL, fc3_oldfreeze_pal_send  },
   [RXTX_FC3OF_NTSC]    = { NULL, fc3_oldfreeze_ntsc_send },
+#endif
+#ifdef CONFIG_LOADER_HYPRALOAD
+  [RXTX_HYPRALOAD_10]  = { NULL, hypraload10_send_byte   },
+  [RXTX_HYPRALOAD_21]  = { NULL, hypraload21_send_byte   },
 #endif
 #ifdef CONFIG_LOADER_KRILL
   [RXTX_KRILL_58PRE]   = { krill_get_byte_clk_data, krill_send_byte_58pre  },
@@ -217,7 +224,8 @@ static const PROGMEM struct fastloader_crc_s fl_crc_table[] = {
   { 0x6af4, FL_SAMSJOURNEY,      RXTX_NONE          }, // CRC of penultimate M-W
 #endif
 #ifdef CONFIG_LOADER_HYPRALOAD
-  { 0xd2f2, FL_HYPRALOAD,        RXTX_NONE          },
+  { 0xd2f2, FL_HYPRALOAD,        RXTX_HYPRALOAD_10  },
+  { 0x5983, FL_HYPRALOAD,        RXTX_HYPRALOAD_21  },
 #endif
 #ifdef CONFIG_LOADER_KRILL
   /* CRCs of the first respective M-W chunk except where noted */
@@ -369,6 +377,7 @@ static const PROGMEM struct fastloader_handler_s fl_handler_table[] = {
   { 0x0424, FL_ULTRABOOT,        write_ultraboot,  0 },
 #endif
 #ifdef CONFIG_LOADER_HYPRALOAD
+  { 0x0401, FL_HYPRALOAD,        load_hypraload, 0 },
   { 0x048b, FL_HYPRALOAD,        load_hypraload, 0 },
 #endif
 #if defined(CONFIG_BUS_SILENCE_REQ)
@@ -2152,7 +2161,7 @@ static void parse_xcommand(void) {
   clean_cmdbuffer();
 
   switch (command_buffer[1]) {
-    
+       
 #ifdef CONFIG_LCD_DISPLAY
   case 'T':
     /* Text */
