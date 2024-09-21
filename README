@@ -1,13 +1,15 @@
 TEST VIDEO --- https://youtu.be/vNw_0pl4SeI
 
-This is an adaptation release v1.0.0atentdead0-120 firmware for SD2IEC on Arduino Mega2560
+Adaptation release v1.0.0atentdead0-120 firmware for SD2IEC on Arduino Mega2560 + LCD 16X2
 
+ARDUINO ADAPTATION MEGA 1280/2560
 Original project link --- https://github.com/larswad/sd2iec_mega2560
 
 INTEGRATED LCD VERSION 
 Original project link --- https://github.com/SvOlli/sd2iec-lcd
 
-![alt text](https://github.com/sandor-ino/sd2iec-MEGA2560-LCD/blob/sd2iec-MEGA2560-LCD/mega2560%20schema%20sd2iec%20LCD.jpg)
+SCHEMATIC ON ARDUINO MEGA 2560
+https://github.com/sandor-ino/sd2iec-MEGA2560-LCD/blob/sd2iec-MEGA2560-LCD/mega2560%20schema%20sd2iec%20LCD.jpg
 
 NOTE:
 flash firmware ready to arduinomega2560  sd2iec.hex
