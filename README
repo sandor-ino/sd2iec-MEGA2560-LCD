@@ -4,8 +4,10 @@ This is an adaptation release v1.0.0atentdead0-120 firmware for SD2IEC on Arduin
 
 Original project link --- https://github.com/larswad/sd2iec_mega2560
 
-LCD VERSION 
+INTEGRATED LCD VERSION 
 Original project link --- https://github.com/SvOlli/sd2iec-lcd
+
+![alt text](https://github.com/sandor-ino/sd2iec-MEGA2560-LCD/blob/sd2iec-MEGA2560-LCD/mega2560%20schema%20sd2iec%20LCD.jpg)
 
 NOTE:
 flash firmware ready to arduinomega2560  sd2iec.hex
